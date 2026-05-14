@@ -109,6 +109,12 @@ router.post('/:id/vote', (req: Request, res: Response) => {
   res.json(mapRow(row))
 })
 
+router.delete('/all', (_req: Request, res: Response) => {
+  db.prepare('DELETE FROM votes').run()
+  db.prepare('DELETE FROM entries').run()
+  res.json({ success: true, message: '已清除所有条目' })
+})
+
 router.delete('/:id', (req: Request, res: Response) => {
   const { userId } = req.body
   const entryId = req.params.id

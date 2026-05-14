@@ -20,14 +20,12 @@ app.use('/api/entries', entriesRouter)
 app.use('/api/users', usersRouter)
 
 app.post('/api/seed', (_req, res) => {
-  const existingCount = (db.prepare('SELECT COUNT(*) as count FROM entries').get() as { count: number }).count
-  if (existingCount > 0) {
-    return res.status(409).json({ error: '数据库中已有数据，跳过种子导入', existingCount })
-  }
-
   const systemUserId = uuid()
   const now = Date.now()
   db.prepare('INSERT OR IGNORE INTO users (id, nickname, created_at) VALUES (?, ?, ?)').run(systemUserId, '系统预置', now)
+
+  db.prepare('DELETE FROM votes').run()
+  db.prepare('DELETE FROM entries').run()
 
   const insert = db.prepare(`
     INSERT INTO entries (id, name, address, lat, lng, entrance, guard_attitude, elevator_access, tips, contributor_id, created_at, up_votes, down_votes)

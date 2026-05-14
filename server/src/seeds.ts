@@ -72,6 +72,22 @@ const seeds: SeedEntry[] = [
   { name: '白石洲城中村', address: '深圳市南山区白石洲', lat: 22.5412, lng: 113.9612, entrance: '无门禁', guardAttitude: 0, elevatorAccess: false, tips: '握手楼密集，巷子窄，电动车难进，建议停大路边走进去', upVotes: 33, downVotes: 0 },
   { name: '平安金融中心', address: '深圳市福田区益田路5033号', lat: 22.5389, lng: 114.0567, entrance: '北门登记进入', guardAttitude: 1, elevatorAccess: true, tips: '深圳第一高楼，电梯分低中高区，确认好楼层对应的电梯', upVotes: 20, downVotes: 3 },
   { name: '坂田华为基地', address: '深圳市龙岗区坂田街道', lat: 22.6512, lng: 114.0589, entrance: '正门严格管控', guardAttitude: 3, elevatorAccess: false, tips: '华为园区安保极严，外卖只能放门口外卖柜', upVotes: 50, downVotes: 1 },
+  // ===== 瑞安地区 =====
+  { name: '瑞安吾悦广场', address: '瑞安市安阳街道罗阳大道1688号', lat: 27.7834, lng: 120.6456, entrance: '商场大门进，写字楼在商场西侧入口', guardAttitude: 0, elevatorAccess: true, tips: '写字楼电梯在商场3楼连廊，建议从西侧写字楼专属入口进', upVotes: 16, downVotes: 1 },
+  { name: '安阳城', address: '瑞安市安阳路268号', lat: 27.7789, lng: 120.6398, entrance: '南门北门都开放，西门有外卖柜', guardAttitude: 0, elevatorAccess: true, tips: '瑞安核心小区，外卖柜就在进西门10米处，放那最省事', upVotes: 23, downVotes: 1 },
+  { name: '瑞祥新区·翡翠府', address: '瑞安市瑞祥大道888号', lat: 27.7934, lng: 120.6356, entrance: '正门登记可进，侧门无人管', guardAttitude: 1, elevatorAccess: true, tips: '新区高档楼盘，白天保安严晚上松，建议从侧门进', upVotes: 8, downVotes: 2 },
+  { name: '风荷苑', address: '瑞安市瑞祥大道566号', lat: 27.7901, lng: 120.6389, entrance: '东门自由进出，西门需刷卡', guardAttitude: 0, elevatorAccess: true, tips: '老小区比较熟，基本不拦外卖，楼栋号清晰好找', upVotes: 12, downVotes: 0 },
+  { name: '天瑞风尚', address: '瑞安市安阳路566号', lat: 27.7812, lng: 120.6423, entrance: '正门出入，不用登记', guardAttitude: 0, elevatorAccess: true, tips: '沿街商住楼，电梯直达各层，送餐方便', upVotes: 5, downVotes: 0 },
+  { name: '华瑞豪庭', address: '瑞安市万松东路188号', lat: 27.7767, lng: 120.6489, entrance: '正门严格登记，需业主确认', guardAttitude: 2, elevatorAccess: true, tips: '严格小区，建议提前联系顾客下楼取，别等保安刁难', upVotes: 19, downVotes: 3 },
+  { name: '东塔大厦', address: '瑞安市解放中路88号', lat: 27.7856, lng: 120.6289, entrance: '老楼无门禁，自由进出', guardAttitude: 0, elevatorAccess: false, tips: '老城区步梯房，最高7层，楼号有点模糊建议白天送', upVotes: 11, downVotes: 0 },
+  { name: '瑞安外滩·香颂', address: '瑞安市滨江大道518号', lat: 27.7712, lng: 120.6312, entrance: '北门进，南门只出', guardAttitude: 0, elevatorAccess: true, tips: '沿江景观房，楼栋号从西到东递增，1栋在最西边', upVotes: 7, downVotes: 0 },
+  { name: '锦湖大厦', address: '瑞安市锦湖街道锦湖北路188号', lat: 27.8012, lng: 120.6256, entrance: '大门开放，保安不管', guardAttitude: 0, elevatorAccess: true, tips: '锦湖街道老写字楼，电梯慢但不用登记', upVotes: 4, downVotes: 0 },
+  { name: '仙甲季家园', address: '瑞安市莘塍街道仙甲季路99号', lat: 27.8098, lng: 120.6567, entrance: '东门西门都可进', guardAttitude: 0, elevatorAccess: false, tips: '莘塍安置房，无电梯6层，楼栋间距小电动车难拐弯', upVotes: 6, downVotes: 1 },
+  { name: '康欣家园', address: '瑞安市经济开发区毓蒙路388号', lat: 27.7689, lng: 120.6612, entrance: '南门进，需登记电动车', guardAttitude: 1, elevatorAccess: true, tips: '开发区保障房，保安登记一下就能进，没什么大问题', upVotes: 9, downVotes: 1 },
+  { name: '瑞安时代大厦', address: '瑞安市安阳路1088号', lat: 27.7845, lng: 120.6456, entrance: '正门登记进入，外卖电梯在侧面', guardAttitude: 1, elevatorAccess: true, tips: '写字楼外卖电梯在大楼东侧，比主电梯快', upVotes: 13, downVotes: 0 },
+  { name: '中润广场', address: '瑞安市罗阳大道1166号', lat: 27.7801, lng: 120.6512, entrance: '广场多处可进，写字楼需走北门', guardAttitude: 0, elevatorAccess: true, tips: '商业广场+写字楼，送餐到写字楼走北门专用通道', upVotes: 10, downVotes: 1 },
+  { name: '宏祥锦园', address: '瑞安市汀田街道文华路78号', lat: 27.8212, lng: 120.6789, entrance: '正门登记', guardAttitude: 1, elevatorAccess: true, tips: '汀田新小区，门牌清楚好找，电动车可进小区', upVotes: 3, downVotes: 0 },
+  { name: '瑞安动车站前', address: '瑞安市江南新区站前路1号', lat: 27.7512, lng: 120.6123, entrance: '开放式区域', guardAttitude: 0, elevatorAccess: true, tips: '动车站周边几个新小区聚集，注意区分具体哪个小区', upVotes: 2, downVotes: 0 },
 ]
 
 export default seeds
