@@ -1,0 +1,17 @@
+{
+  "name": "骑手通行证",
+  "short_name": "骑手通行证",
+  "description": "外卖骑手小区入口情报共享平台",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
