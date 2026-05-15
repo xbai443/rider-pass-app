@@ -4,6 +4,23 @@ import db from '../db'
 
 const router = Router()
 
+const voteLimitMap = new Map<string, { count: number; resetAt: number }>()
+
+function voteRateLimit(req: Request, res: Response, next: Function) {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown'
+  const now = Date.now()
+  const entry = voteLimitMap.get(ip)
+  if (!entry || now > entry.resetAt) {
+    voteLimitMap.set(ip, { count: 1, resetAt: now + 60000 })
+    return next()
+  }
+  if (entry.count >= 20) {
+    return res.status(429).json({ error: '操作太快，请稍后再试' })
+  }
+  entry.count++
+  return next()
+}
+
 router.get('/', (req: Request, res: Response) => {
   const { query, attitude, city, sort } = req.query
 
@@ -16,8 +33,9 @@ router.get('/', (req: Request, res: Response) => {
   const params: unknown[] = []
 
   if (query && typeof query === 'string' && query.trim()) {
-    sql += ' AND e.name LIKE ?'
-    params.push(`%${query.trim()}%`)
+    sql += ' AND (e.name LIKE ? OR e.entrance LIKE ? OR e.tips LIKE ?)'
+    const q = `%${query.trim()}%`
+    params.push(q, q, q)
   }
 
   if (attitude && typeof attitude === 'string') {
@@ -79,7 +97,7 @@ router.post('/', (req: Request, res: Response) => {
   res.status(201).json(mapRow(row))
 })
 
-router.post('/:id/vote', (req: Request, res: Response) => {
+router.post('/:id/vote', voteRateLimit, (req: Request, res: Response) => {
   const { userId, direction } = req.body
   const entryId = req.params.id
 

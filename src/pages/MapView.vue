@@ -67,111 +67,64 @@ function showToast(msg: string, duration = 2500) {
 }
 let map: L.Map | null = null
 let markersLayer: L.LayerGroup | null = null
-let spiderLines: L.Polyline[] = []
 let userLocationMarker: L.CircleMarker | null = null
 let userLocationPulse: L.CircleMarker | null = null
-const PROXIMITY_THRESHOLD = 0.0005
 
-function getClusterKey(lat: number, lng: number): string {
-  const gridLat = Math.round(lat / PROXIMITY_THRESHOLD)
-  const gridLng = Math.round(lng / PROXIMITY_THRESHOLD)
-  return `${gridLat},${gridLng}`
+function getZoomThreshold(zoom: number): number {
+  if (zoom <= 12) return 0.02
+  if (zoom <= 13) return 0.008
+  if (zoom <= 14) return 0.003
+  if (zoom <= 15) return 0.001
+  return 0.0003
 }
 
-function spiderfy(clusterCenter: [number, number], entries: Entry[], map: L.Map) {
-  clearSpiderLines()
-
-  const count = entries.length
-  const radius = count <= 3 ? 40 : count <= 6 ? 55 : 70
-  const startAngle = -Math.PI / 2
-
-  for (let i = 0; i < count; i++) {
-    const angle = startAngle + (2 * Math.PI * i) / count
-    const offsetLat = (radius * Math.sin(angle)) / 111320
-    const offsetLng = (radius * Math.cos(angle)) / (111320 * Math.cos(clusterCenter[0] * Math.PI / 180))
-
-    const targetLat = clusterCenter[0] + offsetLat
-    const targetLng = clusterCenter[1] + offsetLng
-
-    const originalMarker = document.querySelector(`.custom-marker[data-entry-id="${entries[i].id}"]`)
-    if (originalMarker) {
-      const parent = originalMarker.parentElement as HTMLElement
-      if (parent) {
-        parent.style.transform = `translate(${(targetLng - clusterCenter[1]) * 111320 * Math.cos(clusterCenter[0] * Math.PI / 180)}px, ${-(targetLat - clusterCenter[0]) * 111320}px)`
-        parent.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
-        parent.style.zIndex = '1000'
-      }
-    }
-
-    const line = L.polyline([clusterCenter, [targetLat, targetLng]], {
-      color: '#ffffff44',
-      weight: 1.5,
-      dashArray: '3 4',
-    }).addTo(map)
-    spiderLines.push(line)
-  }
-}
-
-function clearSpiderLines() {
-  spiderLines.forEach(l => l.remove())
-  spiderLines = []
-  document.querySelectorAll('.custom-marker').forEach(el => {
-    const parent = el.parentElement as HTMLElement
-    if (parent) {
-      parent.style.transform = ''
-      parent.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
-      parent.style.zIndex = ''
-    }
-  })
-}
-
-function findClusterEntries(clickedEntry: Entry): { center: [number, number]; entries: Entry[] } | null {
-  const [gcjLat, gcjLng] = wgs84ToGcj02(clickedEntry.lat, clickedEntry.lng)
-  const key = getClusterKey(gcjLat, gcjLng)
-
-  const neighbors: Entry[] = []
-  for (const e of entries) {
-    const [eLat, eLng] = wgs84ToGcj02(e.lat, e.lng)
-    const eKey = getClusterKey(eLat, eLng)
-    if (eKey === key) {
-      neighbors.push(e)
-    }
-  }
-
-  if (neighbors.length <= 1) return null
-
-  let sumLat = 0, sumLng = 0
-  for (const e of neighbors) {
-    const [eLat, eLng] = wgs84ToGcj02(e.lat, e.lng)
-    sumLat += eLat
-    sumLng += eLng
-  }
-  return {
-    center: [sumLat / neighbors.length, sumLng / neighbors.length],
-    entries: neighbors,
-  }
-}
-
-function createIcon(attitude: GuardAttitude, entryId: string) {
+function createIcon(attitude: GuardAttitude, entryId: string, size = 44) {
   const color = GUARD_COLORS[attitude]
   const emoji = GUARD_EMOJIS[attitude]
+  const fontSize = Math.round(size * 0.5)
+  const border = Math.max(2, Math.round(size * 0.056))
+  const shadow = Math.round(size * 0.32)
   return L.divIcon({
     className: 'custom-marker',
     html: `<div style="
-      width: 44px; height: 44px;
+      width: ${size}px; height: ${size}px;
       background: ${color}22;
-      border: 2.5px solid ${color};
+      border: ${border}px solid ${color};
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
-      box-shadow: 0 0 14px ${color}44;
+      font-size: ${fontSize}px;
+      box-shadow: 0 0 ${shadow}px ${color}44;
       cursor: pointer;
       transition: transform 0.2s ease;
     " data-entry-id="${entryId}">${emoji}</div>`,
-    iconSize: [44, 44],
-    iconAnchor: [22, 22],
+    iconSize: [size, size],
+    iconAnchor: [Math.round(size / 2), Math.round(size / 2)],
+  })
+}
+
+function createClusterIcon(count: number) {
+  const size = count > 20 ? 50 : count > 8 ? 44 : 38
+  const fontSize = count > 20 ? 14 : count > 8 ? 13 : 12
+  return L.divIcon({
+    className: 'cluster-marker',
+    html: `<div style="
+      width: ${size}px; height: ${size}px;
+      background: #3b82f6;
+      border: 2.5px solid #ffffff33;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: ${fontSize}px;
+      font-weight: 700;
+      color: #fff;
+      box-shadow: 0 0 18px #3b82f644;
+      cursor: pointer;
+    ">${count}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [Math.round(size / 2), Math.round(size / 2)],
   })
 }
 
@@ -183,22 +136,47 @@ function renderMarkers() {
     markersLayer = L.layerGroup().addTo(map)
   }
 
+  const zoom = map.getZoom()
+  const threshold = getZoomThreshold(zoom)
+  const clusters: Map<string, Entry[]> = new Map()
+
   for (const entry of entries) {
     const [gcjLat, gcjLng] = wgs84ToGcj02(entry.lat, entry.lng)
-    const marker = L.marker([gcjLat, gcjLng], {
-      icon: createIcon(entry.guardAttitude, entry.id),
-    })
+    const gridLat = Math.round(gcjLat / threshold)
+    const gridLng = Math.round(gcjLng / threshold)
+    const key = `${gridLat},${gridLng}`
+    if (!clusters.has(key)) clusters.set(key, [])
+    clusters.get(key)!.push(entry)
+  }
 
-    marker.on('click', () => {
-      const cluster = findClusterEntries(entry)
-      if (cluster && cluster.entries.length > 1) {
-        clearSpiderLines()
-        spiderfy(cluster.center, cluster.entries, map!)
+  for (const [, group] of clusters) {
+    if (group.length === 1) {
+      const entry = group[0]
+      const [gcjLat, gcjLng] = wgs84ToGcj02(entry.lat, entry.lng)
+      const marker = L.marker([gcjLat, gcjLng], {
+        icon: createIcon(entry.guardAttitude, entry.id),
+      })
+      marker.on('click', () => { selectedEntry.value = entry })
+      markersLayer.addLayer(marker)
+    } else {
+      let sumLat = 0, sumLng = 0
+      for (const e of group) {
+        const [la, ln] = wgs84ToGcj02(e.lat, e.lng)
+        sumLat += la
+        sumLng += ln
       }
-      selectedEntry.value = entry
-    })
-
-    markersLayer.addLayer(marker)
+      const cx = sumLat / group.length
+      const cy = sumLng / group.length
+      const marker = L.marker([cx, cy], {
+        icon: createClusterIcon(group.length),
+      })
+      marker.on('click', () => {
+        if (map && zoom < 16) {
+          map.setView([cx, cy], Math.min(zoom + 2, 17), { animate: true })
+        }
+      })
+      markersLayer.addLayer(marker)
+    }
   }
 }
 
@@ -331,7 +309,11 @@ onMounted(async () => {
   })
 
   map.on('click', () => {
-    clearSpiderLines()
+    selectedEntry.value = null
+  })
+
+  map.on('zoomend', () => {
+    renderMarkers()
   })
 
   renderMarkers()

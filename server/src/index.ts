@@ -12,6 +12,25 @@ const PORT = process.env.PORT || 3001
 app.use(cors())
 app.use(express.json())
 
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+
+function rateLimit(maxPerMin: number) {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown'
+    const now = Date.now()
+    const entry = rateLimitMap.get(ip)
+    if (!entry || now > entry.resetAt) {
+      rateLimitMap.set(ip, { count: 1, resetAt: now + 60000 })
+      return next()
+    }
+    if (entry.count >= maxPerMin) {
+      return res.status(429).json({ error: '操作太快，请稍后再试' })
+    }
+    entry.count++
+    return next()
+  }
+}
+
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() })
 })

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rider-pass-v1'
+const CACHE_NAME = 'rider-pass-v2'
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -25,14 +25,24 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return
 
-  if (event.request.url.includes('/api/')) {
+  if (event.request.url.includes('/api/entries')) {
     event.respondWith(
-      fetch(event.request).catch(() =>
-        new Response(JSON.stringify({ error: '网络不可用' }), {
-          status: 503,
-          headers: { 'Content-Type': 'application/json' },
+      fetch(event.request)
+        .then((response) => {
+          const clone = response.clone()
+          caches.open(CACHE_NAME).then((cache) =>
+            cache.put(event.request, clone)
+          )
+          return response
         })
-      )
+        .catch(() =>
+          caches.match(event.request).then((cached) =>
+            cached || new Response(JSON.stringify({ error: '网络不可用' }), {
+              status: 503,
+              headers: { 'Content-Type': 'application/json' },
+            })
+          )
+        )
     )
     return
   }
