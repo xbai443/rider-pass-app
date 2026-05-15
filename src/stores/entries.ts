@@ -54,9 +54,13 @@ export const useEntriesStore = defineStore('entries', () => {
 
   function filteredEntries(query: string, attitude: GuardAttitude | null) {
     return entries.value.filter(e => {
-      const matchName = !query || e.name.includes(query)
+      const keyword = query.toLowerCase()
+      const matchName = !keyword || e.name.toLowerCase().includes(keyword)
+      const matchEntrance = !keyword || (e.entrance || '').toLowerCase().includes(keyword)
+      const matchTips = !keyword || (e.tips || '').toLowerCase().includes(keyword)
+      const matchText = matchName || matchEntrance || matchTips
       const matchAttitude = attitude === null || e.guardAttitude === attitude
-      return matchName && matchAttitude
+      return matchText && matchAttitude
     })
   }
 

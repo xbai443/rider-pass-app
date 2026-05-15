@@ -4,7 +4,10 @@
 
     <div class="absolute top-0 left-0 right-0 px-4 pt-4 pb-8 bg-gradient-to-b from-black/80 to-transparent z-[400] pointer-events-none">
       <h1 class="text-lg font-bold tracking-wide">骑手通行证</h1>
-      <p class="text-xs text-white/50 mt-0.5">{{ entries.length }} 条情报</p>
+      <p class="text-xs text-white/50 mt-0.5">
+        <span v-if="store.loading">加载中...</span>
+        <span v-else>{{ entries.length }} 条情报</span>
+      </p>
     </div>
 
     <button
@@ -298,6 +301,14 @@ onMounted(async () => {
   if (!mapContainer.value) return
 
   await nextTick()
+
+  if (entries.length === 0 && store.loading) {
+    await new Promise<void>((resolve) => {
+      const stop = watch(() => store.loading, (val) => {
+        if (!val) { stop(); resolve() }
+      })
+    })
+  }
 
   const [centerLat, centerLng] = wgs84ToGcj02(DEFAULT_CENTER[0], DEFAULT_CENTER[1])
 

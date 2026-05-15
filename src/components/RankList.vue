@@ -6,7 +6,7 @@
     </div>
 
     <div v-if="rankList.length === 0" class="text-center py-6 text-white/20 text-sm">
-      暂无贡献数据
+      {{ loading ? '加载中...' : '暂无贡献数据' }}
     </div>
 
     <div v-else class="space-y-1">
@@ -29,18 +29,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Trophy } from 'lucide-vue-next'
-import { useEntriesStore } from '@/stores/entries'
+import { fetchRankings } from '@/api'
 
-const store = useEntriesStore()
+const rankList = ref<{ name: string; count: number }[]>([])
+const loading = ref(false)
 
-const rankList = computed(() => {
-  const map = store.contributionMap
-  return Object.entries(map)
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count)
-})
+async function loadRankings() {
+  loading.value = true
+  try {
+    const data = await fetchRankings()
+    rankList.value = data.map((u) => ({ name: u.nickname, count: u.contributionCount }))
+  } catch {
+    rankList.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadRankings)
 
 function rankIcon(idx: number): string {
   if (idx === 0) return '🥇'
