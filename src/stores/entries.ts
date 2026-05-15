@@ -6,7 +6,7 @@ import * as api from '@/api'
 
 export const useEntriesStore = defineStore('entries', () => {
   const entries = ref<Entry[]>([])
-  const loading = ref(false)
+  const loading = ref(true)
 
   async function loadEntries(params?: {
     query?: string
