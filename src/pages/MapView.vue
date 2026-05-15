@@ -65,6 +65,8 @@ function showToast(msg: string, duration = 2500) {
 let map: L.Map | null = null
 let markersLayer: L.LayerGroup | null = null
 let spiderLines: L.Polyline[] = []
+let userLocationMarker: L.CircleMarker | null = null
+let userLocationPulse: L.CircleMarker | null = null
 const PROXIMITY_THRESHOLD = 0.0005
 
 function getClusterKey(lat: number, lng: number): string {
@@ -197,6 +199,44 @@ function renderMarkers() {
   }
 }
 
+function updateUserLocation(lat: number, lng: number, zoomTo = true) {
+  if (!map) return
+  const [gcjLat, gcjLng] = wgs84ToGcj02(lat, lng)
+
+  if (zoomTo) {
+    map.setView([gcjLat, gcjLng], 16, { animate: true })
+  }
+
+  if (userLocationMarker) {
+    userLocationMarker.setLatLng([gcjLat, gcjLng])
+  } else {
+    userLocationMarker = L.circleMarker([gcjLat, gcjLng], {
+      radius: 8,
+      fillColor: '#3B82F6',
+      fillOpacity: 1,
+      color: '#FFFFFF',
+      weight: 3,
+      opacity: 1,
+    }).addTo(map)
+  }
+
+  if (userLocationPulse) {
+    userLocationPulse.setLatLng([gcjLat, gcjLng])
+  } else {
+    userLocationPulse = L.circleMarker([gcjLat, gcjLng], {
+      radius: 24,
+      fillColor: '#3B82F6',
+      fillOpacity: 0.18,
+      color: '#3B82F644',
+      weight: 1,
+      opacity: 0.5,
+    }).addTo(map)
+  }
+
+  userLocationPulse.bringToBack()
+  userLocationMarker.bringToFront()
+}
+
 function locateMe() {
   if (!navigator.geolocation) {
     showToast('设备不支持定位')
@@ -207,8 +247,7 @@ function locateMe() {
       const lat = pos.coords.latitude
       const lng = pos.coords.longitude
       if (!isFinite(lat) || !isFinite(lng)) return
-      const [gcjLat, gcjLng] = wgs84ToGcj02(lat, lng)
-      map?.setView([gcjLat, gcjLng], 16, { animate: true })
+      updateUserLocation(lat, lng)
     },
     () => {
       showToast('定位失败，请开启 GPS')
