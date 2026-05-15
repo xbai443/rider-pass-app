@@ -42,6 +42,13 @@
         />
       </TransitionGroup>
     </div>
+
+    <GpsGuide
+      :visible="gpsGuideVisible"
+      reason="开启定位后可按距离排序，快速找附近情报"
+      @close="gpsGuideVisible = false"
+      @retry="gpsGuideVisible = false; locateUser()"
+    />
   </div>
 </template>
 
@@ -53,6 +60,7 @@ import { useEntriesStore } from '@/stores/entries'
 import type { GuardAttitude, Entry } from '@/types'
 import SearchBar from '@/components/SearchBar.vue'
 import EntryCard from '@/components/EntryCard.vue'
+import GpsGuide from '@/components/GpsGuide.vue'
 
 const store = useEntriesStore()
 const router = useRouter()
@@ -65,6 +73,7 @@ const sortBy = ref<'newest' | 'useful' | 'nearest'>('newest')
 const userLat = ref<number | null>(null)
 const userLng = ref<number | null>(null)
 const locating = ref(false)
+const gpsGuideVisible = ref(false)
 
 const sortOptions = [
   { key: 'newest' as const, label: '最新' },
@@ -84,7 +93,10 @@ function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): num
 
 async function locateUser() {
   if (userLat.value !== null) return
-  if (!navigator.geolocation) return
+  if (!navigator.geolocation) {
+    gpsGuideVisible.value = true
+    return
+  }
   locating.value = true
   return new Promise<void>((resolve) => {
     navigator.geolocation.getCurrentPosition(
@@ -94,8 +106,11 @@ async function locateUser() {
         locating.value = false
         resolve()
       },
-      () => {
+      (err) => {
         locating.value = false
+        if (err.code === err.PERMISSION_DENIED) {
+          gpsGuideVisible.value = true
+        }
         resolve()
       },
       { enableHighAccuracy: true, timeout: 5000 }

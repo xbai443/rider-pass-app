@@ -139,6 +139,13 @@
     >
       {{ submitting ? '提交中...' : '提交情报 ✓' }}
     </button>
+
+    <GpsGuide
+      :visible="gpsGuideVisible"
+      reason="开启定位后可以自动获取当前地址"
+      @close="gpsGuideVisible = false"
+      @retry="gpsGuideVisible = false; getGPS()"
+    />
   </form>
 </template>
 
@@ -149,6 +156,7 @@ import { useEntriesStore } from '@/stores/entries'
 import { useUserStore } from '@/stores/user'
 import { GUARD_EMOJIS } from '@/utils/constants'
 import type { GuardAttitude, Entry } from '@/types'
+import GpsGuide from '@/components/GpsGuide.vue'
 
 interface NearbyEntry extends Entry {
   _distance: string
@@ -171,6 +179,7 @@ const entriesStore = useEntriesStore()
 const userStore = useUserStore()
 
 const gpsLoading = ref(false)
+const gpsGuideVisible = ref(false)
 const submitting = ref(false)
 const geoAddress = ref('')
 const showSuggestions = ref(false)
@@ -287,9 +296,13 @@ function getGPS() {
       reverseGeocode(form.lat, form.lng)
       gpsLoading.value = false
     },
-    () => {
+    (err) => {
       gpsLoading.value = false
-      geoAddress.value = '定位失败，请手动输入'
+      if (err.code === err.PERMISSION_DENIED) {
+        gpsGuideVisible.value = true
+      } else {
+        geoAddress.value = '定位失败，请手动输入'
+      }
     },
     { enableHighAccuracy: true, timeout: 10000 }
   )

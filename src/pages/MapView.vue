@@ -34,6 +34,13 @@
         @delete="handleDelete"
       />
     </Transition>
+
+    <GpsGuide
+      :visible="gpsGuideVisible"
+      reason="开启定位后可以看到自己的实时位置"
+      @close="gpsGuideVisible = false"
+      @retry="gpsGuideVisible = false; locateMe()"
+    />
   </div>
 </template>
 
@@ -47,6 +54,7 @@ import { useUserStore } from '@/stores/user'
 import { GUARD_COLORS, GUARD_EMOJIS, DEFAULT_CENTER, DEFAULT_ZOOM } from '@/utils/constants'
 import { wgs84ToGcj02 } from '@/utils/coord'
 import type { Entry, GuardAttitude } from '@/types'
+import GpsGuide from '@/components/GpsGuide.vue'
 import EntryPopup from '@/components/EntryPopup.vue'
 
 const store = useEntriesStore()
@@ -59,6 +67,7 @@ const mapContainer = ref<HTMLDivElement>()
 const selectedEntry = ref<Entry | null>(null)
 const toast = ref('')
 let toastTimer: ReturnType<typeof setTimeout> | null = null
+const gpsGuideVisible = ref(false)
 
 function showToast(msg: string, duration = 2500) {
   toast.value = msg
@@ -230,8 +239,12 @@ function locateMe() {
       if (!isFinite(lat) || !isFinite(lng)) return
       updateUserLocation(lat, lng)
     },
-    () => {
-      showToast('定位失败，请开启 GPS')
+    (err) => {
+      if (err.code === err.PERMISSION_DENIED) {
+        gpsGuideVisible.value = true
+      } else {
+        showToast('定位失败，请检查网络或室外重试')
+      }
     },
     { enableHighAccuracy: true, timeout: 5000 }
   )
