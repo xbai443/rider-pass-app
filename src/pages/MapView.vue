@@ -12,7 +12,8 @@
 
     <button
       @click="locateMe"
-      class="absolute bottom-[96px] right-4 z-[1000] w-10 h-10 bg-surface-card border border-white/5 rounded-xl flex items-center justify-center active:scale-95 transition-transform shadow-lg shadow-black/50"
+      class="absolute bottom-[96px] right-4 z-[1000] w-10 h-10 bg-surface-card border rounded-xl flex items-center justify-center active:scale-95 transition-all shadow-lg shadow-black/50"
+      :class="watchId !== null ? 'border-accent text-accent' : 'border-white/5 text-white/60'"
       aria-label="定位"
     >
       <Crosshair :size="18" class="text-white/70" />
@@ -78,6 +79,12 @@ let map: L.Map | null = null
 let markersLayer: L.LayerGroup | null = null
 let userLocationMarker: L.CircleMarker | null = null
 let userLocationPulse: L.CircleMarker | null = null
+let headingMarker: L.Marker | null = null
+let destinationLine: L.Polyline | null = null
+let watchId: number | null = null
+let currentHeading = 0
+const userLat = ref(0)
+const userLng = ref(0)
 
 function getZoomThreshold(zoom: number): number {
   if (zoom <= 6) return 1.0
@@ -246,8 +253,79 @@ function renderMarkers() {
   }
 }
 
+function createHeadingIcon(heading: number) {
+  return L.divIcon({
+    className: 'heading-marker',
+    html: `<div style="
+      width: 0; height: 0;
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+      border-bottom: 20px solid #3B82F6;
+      transform: rotate(${heading}deg);
+      filter: drop-shadow(0 2px 4px #00000044);
+      transition: transform 0.3s ease;
+    " />`,
+    iconSize: [20, 22],
+    iconAnchor: [10, 28],
+  })
+}
+
+function updateHeading(heading: number | null) {
+  if (heading === null) return
+  currentHeading = heading
+  const [gcjLat, gcjLng] = wgs84ToGcj02(userLat.value, userLng.value)
+  if (headingMarker && isFinite(gcjLat)) {
+    headingMarker.setLatLng([gcjLat, gcjLng])
+    headingMarker.setIcon(createHeadingIcon(heading))
+  }
+}
+
+function updateDestinationLine() {
+  if (destinationLine) {
+    destinationLine.remove()
+    destinationLine = null
+  }
+  if (!selectedEntry.value || !userLat.value || !userLng.value) return
+  if (!isFinite(userLat.value) || !isFinite(userLng.value)) return
+
+  const [myLat, myLng] = wgs84ToGcj02(userLat.value, userLng.value)
+  const [destLat, destLng] = wgs84ToGcj02(selectedEntry.value.lat, selectedEntry.value.lng)
+
+  destinationLine = L.polyline([[myLat, myLng], [destLat, destLng]], {
+    color: '#3B82F6',
+    weight: 2.5,
+    dashArray: '8 6',
+    opacity: 0.7,
+  }).addTo(map!)
+
+  const arrowCount = Math.max(1, Math.floor(destinationLine.getLatLngs().length / 3))
+  for (let i = 1; i <= arrowCount; i++) {
+    const ratio = i / (arrowCount + 1)
+    const lat = myLat + (destLat - myLat) * ratio
+    const lng = myLng + (destLng - myLng) * ratio
+    const angle = Math.atan2(destLat - myLat, destLng - myLng) * 180 / Math.PI
+    L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: '',
+        html: `<div style="
+          width: 0; height: 0;
+          border-left: 5px solid transparent;
+          border-right: 5px solid transparent;
+          border-bottom: 10px solid #3B82F688;
+          transform: rotate(${angle + 90}deg);
+        " />`,
+        iconSize: [10, 12],
+        iconAnchor: [5, 6],
+      }),
+      interactive: false,
+    }).addTo(map!)
+  }
+}
+
 function updateUserLocation(lat: number, lng: number, zoomTo = true) {
   if (!map) return
+  userLat.value = lat
+  userLng.value = lng
   const [gcjLat, gcjLng] = wgs84ToGcj02(lat, lng)
 
   if (zoomTo) {
@@ -280,31 +358,83 @@ function updateUserLocation(lat: number, lng: number, zoomTo = true) {
     }).addTo(map)
   }
 
+  if (headingMarker) {
+    headingMarker.setLatLng([gcjLat, gcjLng])
+  } else {
+    headingMarker = L.marker([gcjLat, gcjLng], {
+      icon: createHeadingIcon(currentHeading),
+      interactive: false,
+    }).addTo(map)
+  }
+
   userLocationPulse.bringToBack()
   userLocationMarker.bringToFront()
+  ;(headingMarker as any).bringToFront()
+
+  updateDestinationLine()
 }
 
-function locateMe() {
+function startTracking() {
   if (!navigator.geolocation) {
     showToast('设备不支持定位')
     return
   }
+  if (watchId !== null) return
+
   navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const lat = pos.coords.latitude
-      const lng = pos.coords.longitude
-      if (!isFinite(lat) || !isFinite(lng)) return
-      updateUserLocation(lat, lng)
-    },
+    (pos) => updateUserLocation(pos.coords.latitude, pos.coords.longitude),
     (err) => {
-      if (err.code === err.PERMISSION_DENIED) {
-        gpsGuideVisible.value = true
-      } else {
-        showToast('定位失败，请检查网络或室外重试')
-      }
+      if (err.code === err.PERMISSION_DENIED) gpsGuideVisible.value = true
+      else showToast('定位失败，请检查网络或室外重试')
     },
     { enableHighAccuracy: true, timeout: 5000 }
   )
+
+  watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      updateUserLocation(pos.coords.latitude, pos.coords.longitude, false)
+    },
+    () => {},
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 }
+  )
+
+  if ('ondeviceorientationabsolute' in window) {
+    window.addEventListener('deviceorientationabsolute', onOrientation)
+  } else {
+    window.addEventListener('deviceorientation', onOrientation)
+  }
+}
+
+function onOrientation(event: DeviceOrientationEvent) {
+  const heading = (event as any).webkitCompassHeading ?? event.alpha
+  if (heading !== null && heading !== undefined) {
+    updateHeading(heading)
+  }
+}
+
+function locateMe() {
+  if (watchId !== null) {
+    stopTracking()
+    return
+  }
+  startTracking()
+}
+
+function stopTracking() {
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId)
+    watchId = null
+  }
+  window.removeEventListener('deviceorientationabsolute', onOrientation)
+  window.removeEventListener('deviceorientation', onOrientation)
+  if (headingMarker) {
+    headingMarker.remove()
+    headingMarker = null
+  }
+  if (destinationLine) {
+    destinationLine.remove()
+    destinationLine = null
+  }
 }
 
 async function handleVoteUp(id: string) {
@@ -394,7 +524,13 @@ watch(entries, () => {
   renderMarkers()
 })
 
+watch(selectedEntry, () => {
+  updateDestinationLine()
+})
+
 onUnmounted(() => {
+  stopTracking()
+  markersLayer?.clearLayers()
   if (toastTimer) clearTimeout(toastTimer)
 })
 
