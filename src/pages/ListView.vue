@@ -57,7 +57,7 @@ import EntryCard from '@/components/EntryCard.vue'
 const store = useEntriesStore()
 const router = useRouter()
 
-const entries = store.entries
+const entries = computed(() => store.entries)
 const query = ref('')
 const attitudeFilter = ref<GuardAttitude | null>(null)
 const cityFilter = ref<string | null>(null)

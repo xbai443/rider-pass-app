@@ -38,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import L from 'leaflet'
 import { Crosshair } from 'lucide-vue-next'
@@ -53,7 +53,7 @@ const store = useEntriesStore()
 const userStore = useUserStore()
 const route = useRoute()
 const router = useRouter()
-const entries = store.entries
+const entries = computed(() => store.entries)
 
 const mapContainer = ref<HTMLDivElement>()
 const selectedEntry = ref<Entry | null>(null)
@@ -140,7 +140,7 @@ function renderMarkers() {
   const threshold = getZoomThreshold(zoom)
   const clusters: Map<string, Entry[]> = new Map()
 
-  for (const entry of entries) {
+  for (const entry of entries.value) {
     const [gcjLat, gcjLng] = wgs84ToGcj02(entry.lat, entry.lng)
     const gridLat = Math.round(gcjLat / threshold)
     const gridLng = Math.round(gcjLng / threshold)
@@ -266,7 +266,7 @@ function navigateToEntry() {
     const [gcjLat, gcjLng] = wgs84ToGcj02(Number(lat), Number(lng))
     map.setView([gcjLat, gcjLng], 17, { animate: true })
     if (id) {
-      const entry = entries.find(e => e.id === String(id))
+      const entry = entries.value.find(e => e.id === String(id))
       if (entry) {
         selectedEntry.value = entry
       }
@@ -280,7 +280,7 @@ onMounted(async () => {
 
   await nextTick()
 
-  if (entries.length === 0 && store.loading) {
+  if (entries.value.length === 0 && store.loading) {
     await new Promise<void>((resolve) => {
       const stop = watch(() => store.loading, (val) => {
         if (!val) { stop(); resolve() }
