@@ -9,7 +9,7 @@
 
     <button
       @click="locateMe"
-      class="absolute bottom-[88px] right-4 z-[1000] w-10 h-10 bg-surface-card border border-white/5 rounded-xl flex items-center justify-center active:scale-95 transition-transform shadow-lg shadow-black/50"
+      class="absolute bottom-[96px] right-4 z-[1000] w-10 h-10 bg-surface-card border border-white/5 rounded-xl flex items-center justify-center active:scale-95 transition-transform shadow-lg shadow-black/50"
       aria-label="定位"
     >
       <Crosshair :size="18" class="text-white/70" />

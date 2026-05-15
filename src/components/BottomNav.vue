@@ -1,14 +1,21 @@
 <template>
-  <nav class="h-14 bg-surface-card border-t border-white/5 flex items-center justify-around flex-shrink-0">
+  <nav
+    class="h-16 bg-surface-card border-t border-white/5 flex items-center justify-around flex-shrink-0"
+    style="padding-bottom: env(safe-area-inset-bottom, 0px)"
+  >
     <button
       v-for="item in navItems"
       :key="item.to"
       @click="navigate(item.to)"
-      class="flex flex-col items-center justify-center gap-0.5 w-16 h-full transition-colors duration-200"
+      class="flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors duration-200 relative"
       :class="isActive(item.to) ? 'text-accent' : 'text-white/40'"
     >
-      <component :is="item.icon" :size="20" :stroke-width="isActive(item.to) ? 2.5 : 1.5" />
-      <span class="text-[10px] leading-none">{{ item.label }}</span>
+      <component :is="item.icon" :size="22" :stroke-width="isActive(item.to) ? 2.5 : 1.5" />
+      <span class="text-[11px] leading-none font-medium">{{ item.label }}</span>
+      <span
+        v-if="isActive(item.to)"
+        class="absolute bottom-1 left-1/2 -translate-x-1/2 w-5 h-[2.5px] bg-accent rounded-full"
+      />
     </button>
   </nav>
 </template>
