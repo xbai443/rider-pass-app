@@ -80,11 +80,25 @@ let userLocationMarker: L.CircleMarker | null = null
 let userLocationPulse: L.CircleMarker | null = null
 
 function getZoomThreshold(zoom: number): number {
+  if (zoom <= 6) return 1.0
+  if (zoom <= 8) return 0.3
+  if (zoom <= 10) return 0.08
   if (zoom <= 12) return 0.02
   if (zoom <= 13) return 0.008
   if (zoom <= 14) return 0.003
   if (zoom <= 15) return 0.001
   return 0.0003
+}
+
+function extractLabel(entries: Entry[]): string {
+  const addr = entries[0]?.address || ''
+  if (addr.includes('瑞安')) return '瑞安'
+  if (addr.includes('鹿城')) return '鹿城'
+  if (addr.includes('瓯海')) return '瓯海'
+  if (addr.includes('龙湾')) return '龙湾'
+  if (addr.includes('温州')) return '温州'
+  if (entries.length >= 40) return '温州'
+  return ''
 }
 
 function createIcon(attitude: GuardAttitude, entryId: string, size = 44) {
@@ -113,27 +127,66 @@ function createIcon(attitude: GuardAttitude, entryId: string, size = 44) {
   })
 }
 
-function createClusterIcon(count: number) {
-  const size = count > 20 ? 50 : count > 8 ? 44 : 38
-  const fontSize = count > 20 ? 14 : count > 8 ? 13 : 12
+function createClusterIcon(count: number, label: string, zoom: number) {
+  const baseSize = count > 50 ? 60 : count > 20 ? 50 : count > 8 ? 44 : 38
+  const countFontSize = count > 50 ? 14 : count > 20 ? 13 : count > 8 ? 12 : 11
+  const hasLabel = label && zoom <= 10
+
+  if (!hasLabel) {
+    return L.divIcon({
+      className: 'cluster-marker',
+      html: `<div style="
+        width: ${baseSize}px; height: ${baseSize}px;
+        background: #3b82f6;
+        border: 2.5px solid #ffffff33;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: ${countFontSize}px;
+        font-weight: 700;
+        color: #fff;
+        box-shadow: 0 0 18px #3b82f644;
+        cursor: pointer;
+      ">${count}</div>`,
+      iconSize: [baseSize, baseSize],
+      iconAnchor: [Math.round(baseSize / 2), Math.round(baseSize / 2)],
+    })
+  }
+
+  const w = Math.max(90, label.length * 16 + 40 + count.toString().length * 10)
+  const h = 56
   return L.divIcon({
     className: 'cluster-marker',
     html: `<div style="
-      width: ${size}px; height: ${size}px;
-      background: #3b82f6;
-      border: 2.5px solid #ffffff33;
-      border-radius: 50%;
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: ${fontSize}px;
-      font-weight: 700;
-      color: #fff;
-      box-shadow: 0 0 18px #3b82f644;
+      gap: 8px;
+      background: #1e293bdd;
+      backdrop-filter: blur(8px);
+      border: 2px solid #3b82f666;
+      border-radius: 28px;
+      padding: 6px 16px 6px 6px;
+      box-shadow: 0 4px 24px #00000044;
       cursor: pointer;
-    ">${count}</div>`,
-    iconSize: [size, size],
-    iconAnchor: [Math.round(size / 2), Math.round(size / 2)],
+      white-space: nowrap;
+    ">
+      <div style="
+        width: 42px; height: 42px;
+        background: #3b82f6;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 700;
+        color: #fff;
+        flex-shrink: 0;
+      ">${count}</div>
+      <span style="font-size: 15px; font-weight: 600; color: #e2e8f0;">${label}</span>
+    </div>`,
+    iconSize: [w, h],
+    iconAnchor: [Math.round(w / 2), Math.round(h / 2)],
   })
 }
 
@@ -144,6 +197,8 @@ function renderMarkers() {
   } else {
     markersLayer = L.layerGroup().addTo(map)
   }
+
+  if (entries.value.length === 0) return
 
   const zoom = map.getZoom()
   const threshold = getZoomThreshold(zoom)
@@ -159,7 +214,7 @@ function renderMarkers() {
   }
 
   for (const [, group] of clusters) {
-    if (group.length === 1) {
+    if (group.length === 1 && zoom > 10) {
       const entry = group[0]
       const [gcjLat, gcjLng] = wgs84ToGcj02(entry.lat, entry.lng)
       const marker = L.marker([gcjLat, gcjLng], {
@@ -176,12 +231,14 @@ function renderMarkers() {
       }
       const cx = sumLat / group.length
       const cy = sumLng / group.length
+      const label = extractLabel(group)
       const marker = L.marker([cx, cy], {
-        icon: createClusterIcon(group.length),
+        icon: createClusterIcon(group.length, label, zoom),
       })
       marker.on('click', () => {
-        if (map && zoom < 16) {
-          map.setView([cx, cy], Math.min(zoom + 2, 17), { animate: true })
+        if (map) {
+          const targetZoom = zoom < 10 ? 10 : Math.min(zoom + 2, 17)
+          map.setView([cx, cy], targetZoom, { animate: true })
         }
       })
       markersLayer.addLayer(marker)
@@ -331,6 +388,10 @@ onMounted(async () => {
 
   renderMarkers()
   navigateToEntry()
+})
+
+watch(entries, () => {
+  renderMarkers()
 })
 
 onUnmounted(() => {
