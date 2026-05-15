@@ -1,25 +1,28 @@
-const CACHE_NAME = 'rider-pass-v2'
+const CACHE_VERSION = 'rider-pass-v3'
+const CACHE_NAME = `${CACHE_VERSION}-${Date.now()}`
+
 const STATIC_ASSETS = [
   '/',
-  '/index.html',
-  '/favicon.svg',
   '/manifest.json',
+  '/favicon.svg',
 ]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   )
+  self.skipWaiting()
 })
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+        keys.filter((k) => k.startsWith('rider-pass-') && k !== CACHE_NAME).map((k) => caches.delete(k))
       )
     )
   )
+  self.clients.claim()
 })
 
 self.addEventListener('fetch', (event) => {
@@ -30,9 +33,7 @@ self.addEventListener('fetch', (event) => {
       fetch(event.request)
         .then((response) => {
           const clone = response.clone()
-          caches.open(CACHE_NAME).then((cache) =>
-            cache.put(event.request, clone)
-          )
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
           return response
         })
         .catch(() =>
@@ -43,6 +44,15 @@ self.addEventListener('fetch', (event) => {
             })
           )
         )
+    )
+    return
+  }
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() =>
+        caches.match(event.request).then((cached) => cached || caches.match('/'))
+      )
     )
     return
   }
